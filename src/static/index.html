@@ -57,6 +57,12 @@
             background-color: #9445a0;
         }
         
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
         .typing-indicator {
             display: inline-block;
             margin-left: 5px;
@@ -91,11 +97,49 @@
         <h1>Stoic Mentor</h1>
         <div id="chatMessages"></div>
         <textarea id="messageInput" placeholder="Ask your question..." rows="3"></textarea>
-        <button onclick="sendMessage()">Send</button>
+        <div class="controls">
+            <button onclick="sendMessage()">Send</button>
+            <button onclick="toggleSpeech()" id="speechToggle">🔇 Mute</button>
+        </div>
     </div>
 
     <script>
         const messages = [];
+        let isSpeechEnabled = true;
+        const speechSynthesis = window.speechSynthesis;
+        const unMuteTextContent = '🔊 Unmute';
+        const muteTextContent = '🔇 Mute';
+        let hasUserConsented = false;
+        
+        if (!speechSynthesis) {
+            console.warn('Speech synthesis not supported');
+            document.getElementById('speechToggle').style.display = 'none';
+        }
+        
+        document.getElementById('speechToggle').textContent = unMuteTextContent;
+        
+        function toggleSpeech() {
+            if (!hasUserConsented && isSpeechEnabled) {
+                requestSpeechConsent();
+                return;
+            }
+            isSpeechEnabled = !isSpeechEnabled;
+            const button = document.getElementById('speechToggle');
+            button.textContent = isSpeechEnabled ? muteTextContent : unMuteTextContent;
+            if (!isSpeechEnabled) {
+                speechSynthesis.cancel();
+            }
+        }
+        
+        function speakText(text) {
+            if (!isSpeechEnabled || !hasUserConsented) return;
+            
+            speechSynthesis.cancel(); // Stop any current speech
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.9; // Slightly slower
+            utterance.pitch = 1;
+            speechSynthesis.speak(utterance);
+        }
         
         document.getElementById('messageInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -166,6 +210,8 @@
                     content: fullResponse
                 });
                 
+                speakText(fullResponse);
+                
             } catch (error) {
                 console.error('Error:', error);
                 addMessageToChat('system', 'Error: Could not get response from the philosopher');
@@ -179,6 +225,29 @@
             messageDiv.textContent = content;
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+                
+        async function requestSpeechConsent() {
+            if (hasUserConsented) return true;
+            
+            const consent = confirm('Would you like to enable voice responses from the Stoic Mentor?');
+            hasUserConsented = consent;
+            
+            if (consent) {
+                hasUserConsented = true;
+                isSpeechEnabled = true;
+                const test = new SpeechSynthesisUtterance('');
+                speechSynthesis.speak(test);
+                const button = document.getElementById('speechToggle');
+                button.textContent = muteTextContent;
+                return true;
+            } else {
+                isSpeechEnabled = false;
+                hasUserConsented = false;
+                const button = document.getElementById('speechToggle');
+                button.textContent = unMuteTextContent;
+                return false;
+            }
         }
     </script>
 </body>
