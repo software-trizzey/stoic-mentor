@@ -1,17 +1,18 @@
+import json
+import ollama
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
-import ollama
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 app = FastAPI()
 
-# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
+    allow_origins=["*"],  # FIXME: replace with frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,7 +26,7 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[Message]
-    philosopher: str = "marcus_aurelius"  # Default to Marcus Aurelius
+    philosopher: str = "marcus_aurelius"
 
 class ChatResponse(BaseModel):
     response: str
@@ -33,23 +34,30 @@ class ChatResponse(BaseModel):
 @app.post("/chat")
 async def chat(request: ChatRequest):
     try:
-        # Format messages for ollama
         formatted_messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
         
-        # Call ollama using the llama3.2 model
-        response = ollama.chat(
-            model='marcus-llama3.2', # custom chat model
-            messages=formatted_messages
+        async def generate():
+            stream = ollama.chat(
+                model='marcus-llama3.2',
+                messages=formatted_messages,
+                stream=True
+            )
+            
+            for chunk in stream:
+                if 'message' in chunk and 'content' in chunk['message']:
+                    yield f"data: {json.dumps({'content': chunk['message']['content']})}\n\n"
+            
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream"
         )
-        
-        return ChatResponse(response=response['message']['content'])
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/philosophers")
 async def get_philosophers():
-    # For future expansion, return list of available philosophers
+    # TODO: expand list ofphilosophers
     return {
         "philosophers": [
             {
