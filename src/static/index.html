@@ -105,25 +105,31 @@
 
     <script>
         const messages = [];
-        let isSpeechEnabled = true;
         const speechSynthesis = window.speechSynthesis;
         const unMuteTextContent = '🔊 Unmute';
         const muteTextContent = '🔇 Mute';
-        let hasUserConsented = false;
+        const STORAGE_KEYS = {
+            SPEECH_CONSENT: 'stoicMentor.speechConsent',
+            SPEECH_ENABLED: 'stoicMentor.speechEnabled'
+        };
+        
+        let hasUserConsented = localStorage.getItem(STORAGE_KEYS.SPEECH_CONSENT) === 'true';
+        let isSpeechEnabled = hasUserConsented && localStorage.getItem(STORAGE_KEYS.SPEECH_ENABLED) !== 'false';
         
         if (!speechSynthesis) {
             console.warn('Speech synthesis not supported');
             document.getElementById('speechToggle').style.display = 'none';
         }
         
-        document.getElementById('speechToggle').textContent = unMuteTextContent;
+        document.getElementById('speechToggle').textContent = isSpeechEnabled ? muteTextContent : unMuteTextContent;
         
         function toggleSpeech() {
-            if (!hasUserConsented && isSpeechEnabled) {
+            if (!hasUserConsented) {
                 requestSpeechConsent();
                 return;
             }
             isSpeechEnabled = !isSpeechEnabled;
+            localStorage.setItem(STORAGE_KEYS.SPEECH_ENABLED, isSpeechEnabled);
             const button = document.getElementById('speechToggle');
             button.textContent = isSpeechEnabled ? muteTextContent : unMuteTextContent;
             if (!isSpeechEnabled) {
@@ -231,11 +237,12 @@
             if (hasUserConsented) return true;
             
             const consent = confirm('Would you like to enable voice responses from the Stoic Mentor?');
-            hasUserConsented = consent;
             
             if (consent) {
                 hasUserConsented = true;
                 isSpeechEnabled = true;
+                localStorage.setItem(STORAGE_KEYS.SPEECH_CONSENT, 'true');
+                localStorage.setItem(STORAGE_KEYS.SPEECH_ENABLED, 'true');
                 const test = new SpeechSynthesisUtterance('');
                 speechSynthesis.speak(test);
                 const button = document.getElementById('speechToggle');
@@ -244,6 +251,8 @@
             } else {
                 isSpeechEnabled = false;
                 hasUserConsented = false;
+                localStorage.setItem(STORAGE_KEYS.SPEECH_CONSENT, 'false');
+                localStorage.setItem(STORAGE_KEYS.SPEECH_ENABLED, 'false');
                 const button = document.getElementById('speechToggle');
                 button.textContent = unMuteTextContent;
                 return false;
