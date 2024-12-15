@@ -45,7 +45,7 @@
         }
         
         button {
-            background-color: #4CAF50;
+            background-color: #7c4caf;
             color: white;
             padding: 10px 20px;
             border: none;
@@ -54,7 +54,7 @@
         }
         
         button:hover {
-            background-color: #45a049;
+            background-color: #9445a0;
         }
         
         .typing-indicator {
@@ -119,6 +119,7 @@
             });
             
             try {
+                // FIXME: replace with backend URL
                 const response = await fetch('http://localhost:8000/chat', {
                     method: 'POST',
                     headers: {
