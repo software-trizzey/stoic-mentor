@@ -40,27 +40,29 @@
             width: 100%;
             padding: 10px;
             margin: 10px 0;
-            border: 1px solid #ddd;
+            border: none;
             border-radius: 5px;
+            overflow-y: auto;
+            resize: none;
+        }
+
+        #messageInput:focus {
+            outline: none;
         }
         
         button {
-            background-color: #7c4caf;
+            background-color: #fff;
             color: white;
-            padding: 10px 20px;
+            padding: 0;
             border: none;
             border-radius: 5px;
             cursor: pointer;
         }
         
-        button:hover {
-            background-color: #9445a0;
-        }
-        
         .controls {
             display: flex;
             gap: 10px;
-            margin-top: 10px;
+            margin-top: 2px;
         }
         
         .typing-indicator {
@@ -85,6 +87,12 @@
         .typing-indicator span:nth-child(3) {
             animation-delay: 0.4s;
         }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            color: "white";
+        }
         
         @keyframes typing {
             0%, 100% { transform: translateY(0); }
@@ -96,18 +104,18 @@
     <div class="chat-container">
         <h1>Stoic Mentor</h1>
         <div id="chatMessages"></div>
-        <textarea id="messageInput" placeholder="Ask your question..." rows="3"></textarea>
+        <textarea id="messageInput" placeholder="Ask your question..."  autofocus></textarea>
         <div class="controls">
-            <button onclick="sendMessage()">Send</button>
-            <button onclick="toggleSpeech()" id="speechToggle">🔇 Mute</button>
+            <button onclick="toggleSpeech()" id="speechToggle">
+                <img src="/static/icons/volume-muted-outline.svg" alt="Mute" class="icon" id="muteIcon" style="display: inline;">
+                <img src="/static/icons/volume-on-outline.svg" alt="Unmute" class="icon" id="unmuteIcon" style="display: none;">
+            </button>
         </div>
     </div>
 
     <script>
         const messages = [];
         const speechSynthesis = window.speechSynthesis;
-        const unMuteTextContent = '🔊 Unmute';
-        const muteTextContent = '🔇 Mute';
         const STORAGE_KEYS = {
             SPEECH_CONSENT: 'stoicMentor.speechConsent',
             SPEECH_ENABLED: 'stoicMentor.speechEnabled'
@@ -121,8 +129,6 @@
             document.getElementById('speechToggle').style.display = 'none';
         }
         
-        document.getElementById('speechToggle').textContent = isSpeechEnabled ? muteTextContent : unMuteTextContent;
-        
         function toggleSpeech() {
             if (!hasUserConsented) {
                 requestSpeechConsent();
@@ -130,8 +136,17 @@
             }
             isSpeechEnabled = !isSpeechEnabled;
             localStorage.setItem(STORAGE_KEYS.SPEECH_ENABLED, isSpeechEnabled);
-            const button = document.getElementById('speechToggle');
-            button.textContent = isSpeechEnabled ? muteTextContent : unMuteTextContent;
+            
+            const muteIcon = document.getElementById('muteIcon');
+            const unmuteIcon = document.getElementById('unmuteIcon');
+            if (isSpeechEnabled) {
+                muteIcon.style.display = 'inline';
+                unmuteIcon.style.display = 'none';
+            } else {
+                muteIcon.style.display = 'none';
+                unmuteIcon.style.display = 'inline';
+            }
+
             if (!isSpeechEnabled) {
                 speechSynthesis.cancel();
             }
@@ -246,7 +261,6 @@
                 const test = new SpeechSynthesisUtterance('');
                 speechSynthesis.speak(test);
                 const button = document.getElementById('speechToggle');
-                button.textContent = muteTextContent;
                 return true;
             } else {
                 isSpeechEnabled = false;
@@ -254,7 +268,6 @@
                 localStorage.setItem(STORAGE_KEYS.SPEECH_CONSENT, 'false');
                 localStorage.setItem(STORAGE_KEYS.SPEECH_ENABLED, 'false');
                 const button = document.getElementById('speechToggle');
-                button.textContent = unMuteTextContent;
                 return false;
             }
         }
