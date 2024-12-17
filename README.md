@@ -31,3 +31,7 @@ uvicorn src.main:app --reload
 ```
 
 Navigate to `http://localhost:8000/` in your browser to use the chatbot.
+
+## TODO
+- [ ] Use a better speech synthesis engine to make the voice more natural
+- [ ] Add support for user voice input (currently only the assistant can speak). Maybe we can use Whisper to transcribe the user's voice and then use the transcription to generate a response?
