@@ -116,6 +116,11 @@
             75% { content: '...'; }
             100% { content: ''; }
         }
+
+        #messageInput:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -175,19 +180,34 @@
                 messageDiv.classList.remove('loading-state');
                 messageDiv.textContent = text;
                 messageDiv.style.visibility = 'visible';
+                isGenerating = false;
+                document.getElementById('messageInput').disabled = false;
                 return;
             }
             
             speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
+            
+            const voices = speechSynthesis.getVoices();
+            const maleVoice = voices.find(voice => 
+                voice.name.includes("Eddy (English (United Kingdom))") ||
+                voice.name.includes("Daniel (English (United Kingdom))")
+            );
+            
+            if (maleVoice) {
+                utterance.voice = maleVoice;
+            }
+            
+            utterance.pitch = 0.8;
             utterance.rate = 0.9;
-            utterance.pitch = 1;
             
             utterance.onend = () => {
                 messageDiv.classList.remove('loading-state');
                 messageDiv.textContent = text;
                 messageDiv.style.visibility = 'visible';
                 messageDiv.scrollIntoView({ behavior: 'smooth' });
+                isGenerating = false;
+                document.getElementById('messageInput').disabled = false;
             };
 
             utterance.onerror = () => {
@@ -195,6 +215,8 @@
                 messageDiv.textContent = text;
                 messageDiv.style.visibility = 'visible';
                 messageDiv.scrollIntoView({ behavior: 'smooth' });
+                isGenerating = false;
+                document.getElementById('messageInput').disabled = false;
             };
 
             speechSynthesis.speak(utterance);
@@ -207,11 +229,18 @@
             }
         });
         
+        let isGenerating = false;
+        
         async function sendMessage() {
+            if (isGenerating) return;
+            
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             
             if (!message) return;
+            
+            isGenerating = true;
+            input.disabled = true;
             
             addMessageToChat('user', message);
             input.value = '';
@@ -283,11 +312,15 @@
                     messageDiv.textContent = fullResponse;
                     messageDiv.style.visibility = 'visible';
                     messageDiv.scrollIntoView({ behavior: 'smooth' });
+                    isGenerating = false;
+                    input.disabled = false;
                 }
                 
             } catch (error) {
                 console.error('Error:', error);
                 addMessageToChat('system', 'Error: Could not get response from the philosopher');
+                isGenerating = false;
+                input.disabled = false;
             }
         }
         
