@@ -7,17 +7,23 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                        url('/static/images/marcus-aurelius-portrait-black-and-white.webp') no-repeat center center fixed;
+            background-size: cover;
+            color: #fff;
         }
         
         .chat-container {
-            background-color: white;
-            border-radius: 10px;
+            max-width: 800px;
+            margin: 0 auto;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            min-height: 100vh;
         }
         
         .message {
@@ -27,124 +33,259 @@
         }
         
         .user-message {
-            background-color: #e3f2fd;
+            background-color: rgba(227, 242, 253, 0.1);
             margin-left: 20%;
+            border: 1px solid rgba(227, 242, 253, 0.2);
         }
         
         .philosopher-message {
-            background-color: #f5f5f5;
+            background-color: rgba(245, 245, 245, 0.1);
             margin-right: 20%;
+            border: 1px solid rgba(245, 245, 245, 0.2);
+            position: relative;
+            display: flex;
+            align-items: flex-start;
         }
-        
+
+        .message-text {
+            flex: 1;
+        }
+
+        .sound-wave {
+            position: relative;
+            left: -30px;
+            margin-right: -20px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            min-width: 20px;
+        }
+
+        .sound-wave.active {
+            opacity: 1;
+        }
+
+        .sound-wave span {
+            display: inline-block;
+            width: 3px;
+            height: 20px;
+            background-color: #4CAF50;
+            border-radius: 3px;
+            animation: soundWave 1s ease-in-out infinite;
+        }
+
+        @keyframes soundWave {
+            0%, 100% { 
+                height: 5px;
+                background-color: #4CAF50;
+            }
+            50% { 
+                height: 20px;
+                background-color: #2196F3;
+            }
+        }
+
         #messageInput {
             width: 100%;
             padding: 10px;
             margin: 10px 0;
             border: none;
             border-radius: 5px;
-            overflow-y: auto;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            backdrop-filter: blur(5px);
             resize: none;
         }
 
-        #messageInput:focus {
-            outline: none;
-        }
-        
-        button {
-            background-color: #fff;
-            color: white;
-            padding: 0;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-top: 2px;
-        }
-        
-        .typing-indicator {
-            display: inline-block;
-            margin-left: 5px;
-        }
-        
-        .typing-indicator span {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background-color: #90a4ae;
-            border-radius: 50%;
-            margin-right: 3px;
-            animation: typing 1s infinite;
-        }
-        
-        .typing-indicator span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-        
-        .typing-indicator span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        .icon {
-            width: 24px;
-            height: 24px;
-            color: "white";
-        }
-        
-        @keyframes typing {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-        
-        .loading-state {
-            color: #666;
-            font-style: italic;
-        }
-
-        .loading-state::after {
-            content: '';
-            animation: ellipsis 2s infinite;
-        }
-
-        @keyframes ellipsis {
-            0% { content: ''; }
-            25% { content: '.'; }
-            50% { content: '..'; }
-            75% { content: '...'; }
-            100% { content: ''; }
-        }
-
-        #messageInput:disabled {
-            background-color: #f5f5f5;
-            cursor: not-allowed;
+        #messageInput::placeholder {
+            color: rgba(255, 255, 255, 0.6);
         }
 
         .controls button {
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            padding: 8px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
             position: relative;
+            border: 1px solid transparent;
         }
 
+        .controls button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Active state for buttons */
+        .controls button.active {
+            background-color: rgba(76, 175, 80, 0.2);
+            border-color: rgba(76, 175, 80, 0.5);
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        /* Update the recording indicator */
         .controls button[data-listening="true"]::after {
             content: '';
             position: absolute;
             width: 8px;
             height: 8px;
-            background-color: #ff4444;
+            background-color: #4CAF50;
             border-radius: 50%;
             bottom: 0;
             right: 0;
+            box-shadow: 0 0 5px #4CAF50;
+            animation: pulse 2s infinite;
         }
 
-        .controls button {
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            filter: invert(1);
+        }
+
+        h1 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .immersive-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                        url('/static/images/marcus-aurelius-portrait-black-and-white.webp') no-repeat center center;
+            background-size: cover;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .immersive-mode.active {
+            display: flex;
+        }
+
+        .wave-container {
+            position: relative;
+            width: 300px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .wave-visualizer {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            height: 120px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
             transition: background-color 0.3s ease;
-            padding: 5px;
-            border-radius: 5px;
         }
 
-        .controls button:hover {
-            background-color: #f5f5f5;
+        .wave-visualizer.thinking {
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .wave-visualizer.thinking .wave-bar {
+            animation: thinkingWave 2s ease-in-out infinite;
+            background: #FFA726 !important;
+        }
+
+        .wave-visualizer.thinking .wave-bar:nth-child(odd) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes thinkingWave {
+            0%, 100% {
+                height: 10px;
+                opacity: 0.3;
+                background-color: #FFA726;
+            }
+            50% {
+                height: 30px;
+                opacity: 0.7;
+                background-color: #FF9800;
+            }
+        }
+
+        .wave-bar {
+            width: 4px;
+            height: 3px;
+            background: #4CAF50;
+            border-radius: 2px;
+            transition: height 0.05s ease, background-color 0.2s ease;
+        }
+
+        .exit-immersive {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .exit-immersive:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .exit-immersive .icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        body.immersive .chat-container {
+            display: none;
+        }
+
+        .wave-status {
+            color: #fff;
+            font-size: 1.2em;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-align: center;
+            position: absolute;
+            bottom: -40px;
+            left: 0;
+            right: 0;
+        }
+
+        .thinking .wave-status {
+            opacity: 1;
         }
     </style>
 </head>
@@ -201,14 +342,18 @@
             isSpeechEnabled = !isSpeechEnabled;
             localStorage.setItem(STORAGE_KEYS.SPEECH_ENABLED, isSpeechEnabled);
             
+            const speechToggle = document.getElementById('speechToggle');
             const textModeIcon = document.getElementById('textModeIcon');
             const speechModeIcon = document.getElementById('speechModeIcon');
+            
             if (isSpeechEnabled) {
                 speechModeIcon.style.display = 'inline';
                 textModeIcon.style.display = 'none';
+                speechToggle.classList.add('active');
             } else {
                 speechModeIcon.style.display = 'none';
                 textModeIcon.style.display = 'inline';
+                speechToggle.classList.remove('active');
             }
 
             if (!isSpeechEnabled) {
@@ -244,29 +389,101 @@
             utterance.pitch = 0.8;
             utterance.rate = 0.9;
             
-            utterance.onend = () => {
-                messageDiv.classList.remove('loading-state');
-                messageDiv.textContent = text;
-                messageDiv.style.visibility = 'visible';
-                messageDiv.scrollIntoView({ behavior: 'smooth' });
-                isGenerating = false;
-                document.getElementById('messageInput').disabled = false;
+            const textContainer = document.createElement('span');
+            textContainer.className = 'message-text';
+            textContainer.textContent = text;
+            
+            const soundWave = messageDiv.querySelector('.sound-wave');
+            messageDiv.textContent = '';
+            if (soundWave) {
+                messageDiv.appendChild(soundWave);
+                soundWave.classList.add('active');
+            }
+            messageDiv.appendChild(textContainer);
+            
+            if (isImmersiveMode && audioContext && analyser) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
                 
-                if (autoListening && recognition) {
-                    setTimeout(() => {
-                        toggleVoiceInput();
-                    }, 1000);
-                }
-            };
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(analyser);
+                
+                utterance.onstart = () => {
+                    if (soundWave) {
+                        soundWave.classList.add('active');
+                    }
+                    oscillator.start();
+                };
+                
+                utterance.onend = () => {
+                    if (soundWave) {
+                        soundWave.classList.remove('active');
+                    }
+                    oscillator.stop();
+                    messageDiv.classList.remove('loading-state');
+                    messageDiv.style.visibility = 'visible';
+                    messageDiv.scrollIntoView({ behavior: 'smooth' });
+                    isGenerating = false;
+                    document.getElementById('messageInput').disabled = false;
+                    
+                    if (autoListening && recognition) {
+                        setTimeout(() => {
+                            toggleVoiceInput();
+                        }, 1000);
+                    }
+                };
 
-            utterance.onerror = () => {
-                messageDiv.classList.remove('loading-state');
-                messageDiv.textContent = text;
-                messageDiv.style.visibility = 'visible';
-                messageDiv.scrollIntoView({ behavior: 'smooth' });
-                isGenerating = false;
-                document.getElementById('messageInput').disabled = false;
-            };
+                utterance.onerror = () => {
+                    if (soundWave) {
+                        soundWave.classList.remove('active');
+                    }
+                    oscillator.stop();
+                    messageDiv.classList.remove('loading-state');
+                    messageDiv.style.visibility = 'visible';
+                    messageDiv.scrollIntoView({ behavior: 'smooth' });
+                    isGenerating = false;
+                    document.getElementById('messageInput').disabled = false;
+                };
+            } else {
+                utterance.onstart = () => {
+                    if (soundWave) {
+                        soundWave.classList.add('active');
+                    }
+                };
+                
+                utterance.onend = () => {
+                    if (soundWave) {
+                        soundWave.classList.remove('active');
+                    }
+                    messageDiv.classList.remove('loading-state');
+                    messageDiv.style.visibility = 'visible';
+                    messageDiv.scrollIntoView({ behavior: 'smooth' });
+                    isGenerating = false;
+                    document.getElementById('messageInput').disabled = false;
+                    
+                    if (autoListening && recognition) {
+                        setTimeout(() => {
+                            toggleVoiceInput();
+                        }, 1000);
+                    }
+                };
+
+                utterance.onerror = () => {
+                    if (soundWave) {
+                        soundWave.classList.remove('active');
+                    }
+                    messageDiv.classList.remove('loading-state');
+                    messageDiv.style.visibility = 'visible';
+                    messageDiv.scrollIntoView({ behavior: 'smooth' });
+                    isGenerating = false;
+                    document.getElementById('messageInput').disabled = false;
+                };
+            }
 
             speechSynthesis.speak(utterance);
         }
@@ -290,6 +507,10 @@
             
             isGenerating = true;
             input.disabled = true;
+            
+            if (isImmersiveMode) {
+                setWaveThinkingState(true);
+            }
             
             addMessageToChat('user', message);
             input.value = '';
@@ -354,6 +575,10 @@
                     content: fullResponse
                 });
                 
+                if (isImmersiveMode) {
+                    setWaveThinkingState(false);
+                }
+                
                 if (isSpeechEnabled) {
                     speakText(fullResponse, messageDiv);
                 } else {
@@ -367,6 +592,9 @@
                 
             } catch (error) {
                 console.error('Error:', error);
+                if (isImmersiveMode) {
+                    setWaveThinkingState(false);
+                }
                 addMessageToChat('system', 'Error: Could not get response from the philosopher');
                 isGenerating = false;
                 input.disabled = false;
@@ -377,7 +605,22 @@
             const chatMessages = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}-message`;
-            messageDiv.textContent = content;
+            
+            const textContainer = document.createElement('span');
+            textContainer.className = 'message-text';
+            textContainer.textContent = content;
+            messageDiv.appendChild(textContainer);
+            
+            if (role === 'philosopher') {
+                const soundWave = document.createElement('div');
+                soundWave.className = 'sound-wave';
+                for (let i = 0; i < 5; i++) {
+                    const bar = document.createElement('span');
+                    soundWave.appendChild(bar);
+                }
+                messageDiv.insertBefore(soundWave, textContainer);
+            }
+            
             if (role === 'user' || role === 'system' || !isSpeechEnabled) {
                 messageDiv.style.visibility = 'visible';
             }
@@ -459,6 +702,11 @@
             if (isListening) {
                 try {
                     recognition.stop();
+                    document.getElementById('voiceInputToggle').classList.remove('active');
+                    if (microphoneStream) {
+                        microphoneStream.getTracks().forEach(track => track.stop());
+                        microphoneStream = null;
+                    }
                 } catch (err) {
                     console.error('Error stopping recognition:', err);
                 }
@@ -482,15 +730,29 @@
             }
 
             try {
+                // Setup audio context if in immersive mode
+                if (isImmersiveMode && !audioContext) {
+                    setupAudioAnalyzer();
+                }
+
+                // Connect microphone if in immersive mode
+                if (isImmersiveMode && !microphoneStream) {
+                    await connectMicrophone();
+                }
+
                 await new Promise(resolve => setTimeout(resolve, 100));
                 recognition.start();
                 const input = document.getElementById('messageInput');
                 input.placeholder = 'Listening...';
-                document.getElementById('voiceInputToggle').setAttribute('data-listening', 'true');
+                const voiceInputToggle = document.getElementById('voiceInputToggle');
+                voiceInputToggle.setAttribute('data-listening', 'true');
+                voiceInputToggle.classList.add('active');
             } catch (err) {
                 console.error('Speech recognition error:', err);
                 isListening = false;
-                document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                const voiceInputToggle = document.getElementById('voiceInputToggle');
+                voiceInputToggle.removeAttribute('data-listening');
+                voiceInputToggle.classList.remove('active');
                 resetVoiceInput();
             }
         }
@@ -501,14 +763,21 @@
                 clearTimeout(voiceTimeout);
                 voiceTimeout = null;
             }
+            
+            if (!isImmersiveMode && microphoneStream) {
+                microphoneStream.getTracks().forEach(track => track.stop());
+                microphoneStream = null;
+            }
+            
             const input = document.getElementById('messageInput');
             input.placeholder = 'Ask your question...';
-            document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+            const voiceInputToggle = document.getElementById('voiceInputToggle');
+            voiceInputToggle.removeAttribute('data-listening');
+            voiceInputToggle.classList.remove('active');
             
             if (autoListening) {
                 autoListening = false;
-                const voiceInputButton = document.getElementById('voiceInputToggle');
-                voiceInputButton.style.backgroundColor = '#fff';
+                document.getElementById('autoListenToggle').classList.remove('active');
             }
         }
 
@@ -522,13 +791,17 @@
         if (recognition) {
             let lastSpeechEndTime = 0;
             
-            recognition.onstart = () => {
+            recognition.onstart = async () => {
                 logRecognitionEvent('start', {
                     autoListening: autoListening,
                     isGenerating: isGenerating
                 });
                 isListening = true;
                 document.getElementById('voiceInputToggle').setAttribute('data-listening', 'true');
+                
+                if (isImmersiveMode && audioContext && analyser) {
+                    await connectMicrophone();
+                }
             };
 
             recognition.onresult = (event) => {
@@ -658,6 +931,12 @@
                         }, 1000);
                     }
                 }
+                
+                // Only stop microphone if we're not in immersive mode
+                if (!isImmersiveMode && microphoneStream) {
+                    microphoneStream.getTracks().forEach(track => track.stop());
+                    microphoneStream = null;
+                }
             };
 
             recognition.onspeechstart = () => {
@@ -671,18 +950,142 @@
 
         function toggleAutoListening() {
             autoListening = !autoListening;
-            const voiceInputButton = document.getElementById('voiceInputToggle');
+            const autoListenToggle = document.getElementById('autoListenToggle');
             
             if (autoListening) {
-                voiceInputButton.style.backgroundColor = '#e3f2fd';
+                autoListenToggle.classList.add('active');
+                toggleImmersiveMode(); // Enter immersive mode
                 if (!isListening && !isGenerating) {
                     toggleVoiceInput();
                 }
             } else {
-                voiceInputButton.style.backgroundColor = '#fff';
+                autoListenToggle.classList.remove('active');
                 if (isListening) {
                     recognition.stop();
                 }
+                toggleImmersiveMode(); // Exit immersive mode
+            }
+        }
+
+        let isImmersiveMode = false;
+        let audioContext = null;
+        let analyser = null;
+        let dataArray = null;
+        let animationFrame = null;
+        let microphoneStream = null;
+
+        function setupAudioAnalyzer() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 128;
+                analyser.smoothingTimeConstant = 0.7;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+            }
+        }
+
+        async function connectMicrophone() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                microphoneStream = stream;
+                return stream;
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+                microphoneStream = null;
+                return null;
+            }
+        }
+
+        function createImmersiveUI() {
+            const immersiveContainer = document.createElement('div');
+            immersiveContainer.className = 'immersive-mode';
+            immersiveContainer.innerHTML = `
+                <div class="wave-container">
+                    <div class="wave-visualizer">
+                        ${Array(32).fill('<div class="wave-bar"></div>').join('')}
+                    </div>
+                    <div class="wave-status">Contemplating your question...</div>
+                </div>
+                <button class="exit-immersive">
+                    <img src="/static/icons/close-outline.svg" alt="Exit" class="icon">
+                    Exit Conversation Mode
+                </button>
+            `;
+            
+            document.body.appendChild(immersiveContainer);
+            
+            document.querySelector('.exit-immersive').addEventListener('click', toggleImmersiveMode);
+        }
+
+        function updateWaveform() {
+            if (!isImmersiveMode) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            const bars = document.querySelectorAll('.wave-bar');
+            
+            for (let i = 0; i < bars.length; i++) {
+                const value = dataArray[i] || 0;
+                const scaledHeight = Math.max(3, Math.min(60, value * 0.7));
+                const smoothedHeight = (scaledHeight + parseFloat(bars[i].style.height || '3') * 2) / 3;
+                bars[i].style.height = `${smoothedHeight}px`;
+            }
+            
+            animationFrame = requestAnimationFrame(updateWaveform);
+        }
+
+        async function toggleImmersiveMode() {
+            isImmersiveMode = !isImmersiveMode;
+            
+            if (isImmersiveMode) {
+                setupAudioAnalyzer();
+                document.body.classList.add('immersive');
+                document.querySelector('.immersive-mode').classList.add('active');
+                
+                if (isListening) {
+                    await connectMicrophone();
+                }
+                
+                updateWaveform();
+            } else {
+                document.body.classList.remove('immersive');
+                document.querySelector('.immersive-mode').classList.remove('active');
+                
+                // Reset all button states
+                if (isListening) {
+                    recognition.stop();
+                }
+                
+                autoListening = false;
+                
+                const voiceInputToggle = document.getElementById('voiceInputToggle');
+                const autoListenToggle = document.getElementById('autoListenToggle');
+                
+                voiceInputToggle.removeAttribute('data-listening');
+                voiceInputToggle.classList.remove('active');
+                autoListenToggle.classList.remove('active');
+                
+                // Clean up audio resources
+                if (microphoneStream) {
+                    microphoneStream.getTracks().forEach(track => track.stop());
+                    microphoneStream = null;
+                }
+                
+                if (animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', createImmersiveUI);
+
+        function setWaveThinkingState(isThinking) {
+            const waveVisualizer = document.querySelector('.wave-visualizer');
+            if (isThinking) {
+                waveVisualizer.classList.add('thinking');
+            } else {
+                waveVisualizer.classList.remove('thinking');
             }
         }
     </script>
