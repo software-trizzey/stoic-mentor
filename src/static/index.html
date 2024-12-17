@@ -136,6 +136,16 @@
             bottom: 0;
             right: 0;
         }
+
+        .controls button {
+            transition: background-color 0.3s ease;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .controls button:hover {
+            background-color: #f5f5f5;
+        }
     </style>
 </head>
 <body>
@@ -150,6 +160,9 @@
             </button>
             <button onclick="toggleVoiceInput()" id="voiceInputToggle">
                 <img src="/static/icons/microphone-outline.svg" alt="Voice Input" class="icon" title="Click to speak">
+            </button>
+            <button onclick="toggleAutoListening()" id="autoListenToggle">
+                <img src="/static/icons/chat-outline.svg" alt="Auto Conversation" class="icon" title="Toggle conversation mode">
             </button>
         </div>
     </div>
@@ -203,6 +216,8 @@
             }
         }
         
+        let autoListening = false;
+        
         function speakText(text, messageDiv) {
             if (!isSpeechEnabled || !hasUserConsented) {
                 messageDiv.classList.remove('loading-state');
@@ -236,6 +251,12 @@
                 messageDiv.scrollIntoView({ behavior: 'smooth' });
                 isGenerating = false;
                 document.getElementById('messageInput').disabled = false;
+                
+                if (autoListening && recognition) {
+                    setTimeout(() => {
+                        toggleVoiceInput();
+                    }, 1000);
+                }
             };
 
             utterance.onerror = () => {
@@ -395,6 +416,8 @@
         const mediaDevicesSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
         let recognition;
         let isListening = false;
+        let voiceTimeout = null;
+        const VOICE_TIMEOUT_MS = 1500; // 1.5 seconds of silence before submitting
 
         if (!SpeechRecognition || !mediaDevicesSupported || (!isSecureContext && !isLocalhost)) {
             console.warn('Speech recognition unavailable:', {
@@ -416,9 +439,6 @@
             recognition.interimResults = false;
             recognition.lang = 'en-US';
             recognition.maxAlternatives = 1;
-            if ('serviceURI' in recognition) {
-                recognition.serviceURI = 'https://speech.google.com/speech/recognition';
-            }
         }
 
         /**
@@ -437,7 +457,15 @@
             }
             
             if (isListening) {
-                recognition.stop();
+                try {
+                    recognition.stop();
+                } catch (err) {
+                    console.error('Error stopping recognition:', err);
+                }
+                return;
+            }
+
+            if (speechSynthesis.speaking) {
                 return;
             }
 
@@ -454,6 +482,7 @@
             }
 
             try {
+                await new Promise(resolve => setTimeout(resolve, 100));
                 recognition.start();
                 const input = document.getElementById('messageInput');
                 input.placeholder = 'Listening...';
@@ -462,15 +491,54 @@
                 console.error('Speech recognition error:', err);
                 isListening = false;
                 document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                resetVoiceInput();
+            }
+        }
+
+        function resetVoiceInput() {
+            isListening = false;
+            if (voiceTimeout) {
+                clearTimeout(voiceTimeout);
+                voiceTimeout = null;
+            }
+            const input = document.getElementById('messageInput');
+            input.placeholder = 'Ask your question...';
+            document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+            
+            if (autoListening) {
+                autoListening = false;
+                const voiceInputButton = document.getElementById('voiceInputToggle');
+                voiceInputButton.style.backgroundColor = '#fff';
             }
         }
 
         const STOP_WORDS = ['send', 'send message', 'send it'];
 
+        function logRecognitionEvent(type, details) {
+            const timestamp = new Date().toISOString();
+            console.log(`[${timestamp}] Speech Recognition ${type}:`, details);
+        }
+
         if (recognition) {
-            const placeholderText = 'Ask your question...';
+            let lastSpeechEndTime = 0;
             
+            recognition.onstart = () => {
+                logRecognitionEvent('start', {
+                    autoListening: autoListening,
+                    isGenerating: isGenerating
+                });
+                isListening = true;
+                document.getElementById('voiceInputToggle').setAttribute('data-listening', 'true');
+            };
+
             recognition.onresult = (event) => {
+                logRecognitionEvent('result', {
+                    results: Array.from(event.results).map(result => ({
+                        transcript: result[0].transcript,
+                        confidence: result[0].confidence
+                    }))
+                });
+                
                 const input = document.getElementById('messageInput');
                 const transcript = event.results[0][0].transcript;
                 const lowerTranscript = transcript.toLowerCase();
@@ -488,48 +556,134 @@
                     }, transcript);
                     
                     input.value = cleanTranscript;
-                    input.placeholder = placeholderText;
                     isListening = false;
                     document.getElementById('voiceInputToggle').removeAttribute('data-listening');
                     sendMessage();
                 } else {
                     input.value = transcript;
-                    input.placeholder = placeholderText;
-                    isListening = false;
-                    document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                    // Set timeout to submit after getting result
+                    if (voiceTimeout) {
+                        clearTimeout(voiceTimeout);
+                    }
+                    voiceTimeout = setTimeout(() => {
+                        if (input.value.trim() && isListening) {
+                            logRecognitionEvent('auto submit', 'Submitting after result timeout');
+                            isListening = false;
+                            document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                            sendMessage();
+                        }
+                    }, VOICE_TIMEOUT_MS);
                 }
-            };
-
-            recognition.onend = () => {
-                const input = document.getElementById('messageInput');
-                input.placeholder = placeholderText;
-                isListening = false;
-                document.getElementById('voiceInputToggle').removeAttribute('data-listening');
             };
 
             recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                const input = document.getElementById('messageInput');
-                input.placeholder = placeholderText;
-                isListening = false;
-                document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                logRecognitionEvent('error', {
+                    error: event.error,
+                    message: event.message || 'No additional error details',
+                    timeStamp: event.timeStamp
+                });
+
+                resetVoiceInput();
                 
-                if (event.error === 'not-allowed' && !hasMicrophoneConsent) {
-                    localStorage.setItem(STORAGE_KEYS.MICROPHONE_CONSENT, 'false');
-                } else if (event.error === 'network') {
-                    alert('Unable to access speech recognition service. Please check your internet connection.');
-                } else if (event.error === 'no-speech') {
-                    input.placeholder = 'No speech detected. Try again...';
-                    setTimeout(() => {
-                        input.placeholder = placeholderText;
-                    }, 3000);
+                switch (event.error) {
+                    case 'not-allowed':
+                        if (!hasMicrophoneConsent) {
+                            localStorage.setItem(STORAGE_KEYS.MICROPHONE_CONSENT, 'false');
+                            alert('Microphone access was denied. Please enable microphone access in your browser settings.');
+                        }
+                        break;
+                    case 'network':
+                        alert('Unable to access speech recognition service. Please check your internet connection.');
+                        break;
+                    case 'no-speech':
+                        const input = document.getElementById('messageInput');
+                        input.placeholder = 'No speech detected. Try again...';
+                        setTimeout(() => {
+                            input.placeholder = 'Ask your question...';
+                        }, 3000);
+                        break;
+                    case 'audio-capture':
+                        alert('No microphone was found. Please ensure your microphone is connected.');
+                        break;
+                    case 'aborted':
+                        logRecognitionEvent('info', 'Recognition manually stopped');
+                        break;
+                    default:
+                        logRecognitionEvent('warning', `Unhandled error type: ${event.error}`);
+                        if (autoListening) {
+                            setTimeout(() => {
+                                if (autoListening && !isListening && !isGenerating) {
+                                    toggleVoiceInput();
+                                }
+                            }, 1000);
+                        }
                 }
             };
 
-            recognition.onstart = () => {
-                isListening = true;
-                document.getElementById('voiceInputToggle').setAttribute('data-listening', 'true');
+            recognition.onspeechend = () => {
+                logRecognitionEvent('speech end', 'Speech ended');
+                lastSpeechEndTime = Date.now();
             };
+
+            recognition.onend = () => {
+                if (voiceTimeout) {
+                    clearTimeout(voiceTimeout);
+                    voiceTimeout = null;
+                }
+
+                const input = document.getElementById('messageInput');
+                const hasContent = input.value.trim().length > 0;
+
+                logRecognitionEvent('end', {
+                    status: hasContent ? 'Recognition ended with content' : 'Recognition ended normally',
+                    wasListening: isListening,
+                    hasContent: hasContent,
+                    timeSinceLastSpeech: Date.now() - lastSpeechEndTime
+                });
+
+                if (hasContent && isListening) {
+                    logRecognitionEvent('auto submit', 'Submitting on recognition end');
+                    isListening = false;
+                    document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                    sendMessage();
+                } else if (isListening) {
+                    resetVoiceInput();
+                    
+                    if (autoListening && !isGenerating && !hasContent) {
+                        logRecognitionEvent('info', 'Attempting to restart recognition');
+                        setTimeout(() => {
+                            if (autoListening && !isListening && !isGenerating) {
+                                toggleVoiceInput();
+                            }
+                        }, 1000);
+                    }
+                }
+            };
+
+            recognition.onspeechstart = () => {
+                logRecognitionEvent('speech start', 'Speech detected');
+                if (voiceTimeout) {
+                    clearTimeout(voiceTimeout);
+                    voiceTimeout = null;
+                }
+            };
+        }
+
+        function toggleAutoListening() {
+            autoListening = !autoListening;
+            const voiceInputButton = document.getElementById('voiceInputToggle');
+            
+            if (autoListening) {
+                voiceInputButton.style.backgroundColor = '#e3f2fd';
+                if (!isListening && !isGenerating) {
+                    toggleVoiceInput();
+                }
+            } else {
+                voiceInputButton.style.backgroundColor = '#fff';
+                if (isListening) {
+                    recognition.stop();
+                }
+            }
         }
     </script>
 </body>
