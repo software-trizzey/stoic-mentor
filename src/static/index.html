@@ -413,6 +413,11 @@
             }
         }
 
+        /**
+         * Note: Brave browser does not support speech recognition API.
+         * These users will hit a network error when using voice input.
+         * More: https://github.com/brave/brave-browser/issues/3725#issuecomment-555694620
+         */
         async function toggleVoiceInput() {
             if (!recognition || !mediaDevicesSupported) {
                 if (!isSecureContext && !isLocalhost) {
