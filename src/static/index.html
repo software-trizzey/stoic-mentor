@@ -98,6 +98,24 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-5px); }
         }
+        
+        .loading-state {
+            color: #666;
+            font-style: italic;
+        }
+
+        .loading-state::after {
+            content: '';
+            animation: ellipsis 2s infinite;
+        }
+
+        @keyframes ellipsis {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+            100% { content: ''; }
+        }
     </style>
 </head>
 <body>
@@ -152,13 +170,33 @@
             }
         }
         
-        function speakText(text) {
-            if (!isSpeechEnabled || !hasUserConsented) return;
+        function speakText(text, messageDiv) {
+            if (!isSpeechEnabled || !hasUserConsented) {
+                messageDiv.classList.remove('loading-state');
+                messageDiv.textContent = text;
+                messageDiv.style.visibility = 'visible';
+                return;
+            }
             
-            speechSynthesis.cancel(); // Stop any current speech
+            speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 0.9; // Slightly slower
+            utterance.rate = 0.9;
             utterance.pitch = 1;
+            
+            utterance.onend = () => {
+                messageDiv.classList.remove('loading-state');
+                messageDiv.textContent = text;
+                messageDiv.style.visibility = 'visible';
+                messageDiv.scrollIntoView({ behavior: 'smooth' });
+            };
+
+            utterance.onerror = () => {
+                messageDiv.classList.remove('loading-state');
+                messageDiv.textContent = text;
+                messageDiv.style.visibility = 'visible';
+                messageDiv.scrollIntoView({ behavior: 'smooth' });
+            };
+
             speechSynthesis.speak(utterance);
         }
         
@@ -184,7 +222,6 @@
             });
             
             try {
-                // FIXME: replace with backend URL
                 const response = await fetch('http://localhost:8000/chat', {
                     method: 'POST',
                     headers: {
@@ -198,6 +235,11 @@
                 
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message philosopher-message';
+                if (isSpeechEnabled) {
+                    messageDiv.style.visibility = 'visible';
+                    messageDiv.textContent = 'Speaking';
+                    messageDiv.classList.add('loading-state');
+                }
                 document.getElementById('chatMessages').appendChild(messageDiv);
                 
                 let fullResponse = '';
@@ -217,8 +259,11 @@
                             try {
                                 const data = JSON.parse(line.slice(6));
                                 fullResponse += data.content;
-                                messageDiv.textContent = fullResponse;
-                                messageDiv.scrollIntoView({ behavior: 'smooth' });
+                                if (!isSpeechEnabled) {
+                                    messageDiv.textContent = fullResponse;
+                                    messageDiv.style.visibility = 'visible';
+                                    messageDiv.scrollIntoView({ behavior: 'smooth' });
+                                }
                             } catch (e) {
                                 console.error('Error parsing SSE data:', e);
                             }
@@ -231,7 +276,14 @@
                     content: fullResponse
                 });
                 
-                speakText(fullResponse);
+                if (isSpeechEnabled) {
+                    speakText(fullResponse, messageDiv);
+                } else {
+                    messageDiv.classList.remove('loading-state');
+                    messageDiv.textContent = fullResponse;
+                    messageDiv.style.visibility = 'visible';
+                    messageDiv.scrollIntoView({ behavior: 'smooth' });
+                }
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -244,6 +296,9 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}-message`;
             messageDiv.textContent = content;
+            if (role === 'user' || role === 'system' || !isSpeechEnabled) {
+                messageDiv.style.visibility = 'visible';
+            }
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
