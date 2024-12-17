@@ -452,16 +452,39 @@
             }
         }
 
+        const STOP_WORDS = ['send', 'send message', 'send it'];
+
         if (recognition) {
             const placeholderText = 'Ask your question...';
             
             recognition.onresult = (event) => {
                 const input = document.getElementById('messageInput');
                 const transcript = event.results[0][0].transcript;
-                input.value = transcript;
-                input.placeholder = placeholderText;
-                isListening = false;
-                document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                const lowerTranscript = transcript.toLowerCase();
+                
+                const endsWithStopWord = STOP_WORDS.some(stopWord => 
+                    lowerTranscript.endsWith(stopWord)
+                );
+                
+                if (endsWithStopWord) {
+                    const cleanTranscript = STOP_WORDS.reduce((text, stopWord) => {
+                        if (lowerTranscript.endsWith(stopWord)) {
+                            return transcript.slice(0, -stopWord.length).trim();
+                        }
+                        return text;
+                    }, transcript);
+                    
+                    input.value = cleanTranscript;
+                    input.placeholder = placeholderText;
+                    isListening = false;
+                    document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                    sendMessage();
+                } else {
+                    input.value = transcript;
+                    input.placeholder = placeholderText;
+                    isListening = false;
+                    document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                }
             };
 
             recognition.onend = () => {
