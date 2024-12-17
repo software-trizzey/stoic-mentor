@@ -282,10 +282,7 @@
             bottom: -40px;
             left: 0;
             right: 0;
-        }
-
-        .thinking .wave-status {
-            opacity: 1;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         }
     </style>
 </head>
@@ -799,7 +796,9 @@
                 isListening = true;
                 document.getElementById('voiceInputToggle').setAttribute('data-listening', 'true');
                 
-                if (isImmersiveMode && audioContext && analyser) {
+                if (isImmersiveMode) {
+                    const waveStatus = document.querySelector('.wave-status');
+                    waveStatus.textContent = 'Listening...';
                     await connectMicrophone();
                 }
             };
@@ -1082,10 +1081,15 @@
 
         function setWaveThinkingState(isThinking) {
             const waveVisualizer = document.querySelector('.wave-visualizer');
+            const waveStatus = document.querySelector('.wave-status');
             if (isThinking) {
                 waveVisualizer.classList.add('thinking');
+                waveStatus.style.opacity = '1';
+                waveStatus.textContent = 'Contemplating your question...';
             } else {
                 waveVisualizer.classList.remove('thinking');
+                waveStatus.style.opacity = '0';
+                waveStatus.textContent = '';
             }
         }
     </script>
