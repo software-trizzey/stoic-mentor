@@ -19,6 +19,7 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
+app.mount("/static/images", StaticFiles(directory="src/static/images"), name="images")
 
 class Message(BaseModel):
     role: str
