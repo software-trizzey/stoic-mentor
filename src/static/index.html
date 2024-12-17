@@ -171,6 +171,14 @@
             console.warn('Speech synthesis not supported');
             document.getElementById('speechToggle').style.display = 'none';
         }
+
+        if (
+            navigator?.brave ||
+            navigator?.userAgent?.toLowerCase()?.includes('brave') ||
+            navigator?.userAgentData?.brands?.some(brand => brand.brand === 'Brave')
+        ) {
+            document.getElementById('voiceInputToggle').style.display = 'none';
+        }
         
         function toggleSpeech() {
             if (!hasUserConsented) {
