@@ -15,7 +15,7 @@ Create a custom model (default is `marcus-llama3.2` which creates a model with t
 ollama create marcus-llama3.2 -f llama3.2.modelfile
 ```
 
-Run the model
+Run the model to chat via the terminal. This is useful for testing the model.
 ```bash
 ollama run marcus-llama3.2
 ```
