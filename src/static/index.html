@@ -121,6 +121,21 @@
             background-color: #f5f5f5;
             cursor: not-allowed;
         }
+
+        .controls button {
+            position: relative;
+        }
+
+        .controls button[data-listening="true"]::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #ff4444;
+            border-radius: 50%;
+            bottom: 0;
+            right: 0;
+        }
     </style>
 </head>
 <body>
@@ -133,6 +148,9 @@
                 <img src="/static/icons/volume-on-outline.svg" alt="Voice Mode Active" class="icon" id="speechModeIcon" style="display: none;" title="Use Text Mode">
                 <img src="/static/icons/text-on-outline.svg" alt="Text Mode Active" class="icon" id="textModeIcon" style="display: inline;" title="Use Voice Mode">
             </button>
+            <button onclick="toggleVoiceInput()" id="voiceInputToggle">
+                <img src="/static/icons/microphone-outline.svg" alt="Voice Input" class="icon" title="Click to speak">
+            </button>
         </div>
     </div>
 
@@ -141,11 +159,13 @@
         const speechSynthesis = window.speechSynthesis;
         const STORAGE_KEYS = {
             SPEECH_CONSENT: 'stoicMentor.speechConsent',
-            SPEECH_ENABLED: 'stoicMentor.speechEnabled'
+            SPEECH_ENABLED: 'stoicMentor.speechEnabled',
+            MICROPHONE_CONSENT: 'stoicMentor.microphoneConsent'
         };
         
         let hasUserConsented = localStorage.getItem(STORAGE_KEYS.SPEECH_CONSENT) === 'true';
         let isSpeechEnabled = hasUserConsented && localStorage.getItem(STORAGE_KEYS.SPEECH_ENABLED) !== 'false';
+        let hasMicrophoneConsent = localStorage.getItem(STORAGE_KEYS.MICROPHONE_CONSENT) === 'true';
         
         if (!speechSynthesis) {
             console.warn('Speech synthesis not supported');
@@ -358,6 +378,145 @@
                 const button = document.getElementById('speechToggle');
                 return false;
             }
+        }
+
+        const isSecureContext = window.isSecureContext;
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const mediaDevicesSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        let recognition;
+        let isListening = false;
+
+        if (!SpeechRecognition || !mediaDevicesSupported || (!isSecureContext && !isLocalhost)) {
+            console.warn('Speech recognition unavailable:', {
+                speechRecognitionSupported: !!SpeechRecognition,
+                mediaDevicesSupported: mediaDevicesSupported,
+                secureContext: isSecureContext,
+                isLocalhost: isLocalhost
+            });
+            
+            const voiceInputButton = document.getElementById('voiceInputToggle');
+            voiceInputButton.style.display = 'none';
+            
+            if (!isSecureContext && !isLocalhost) {
+                console.warn('Voice input requires a secure (HTTPS) connection');
+            }
+        } else {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+            recognition.maxAlternatives = 1;
+            if ('serviceURI' in recognition) {
+                recognition.serviceURI = 'https://speech.google.com/speech/recognition';
+            }
+        }
+
+        async function toggleVoiceInput() {
+            if (!recognition || !mediaDevicesSupported) {
+                if (!isSecureContext && !isLocalhost) {
+                    alert('Voice input requires a secure (HTTPS) connection');
+                } else {
+                    alert('Voice input is not supported in your browser');
+                }
+                return;
+            }
+            
+            if (isListening) {
+                recognition.stop();
+                return;
+            }
+
+            if (!hasMicrophoneConsent) {
+                try {
+                    await navigator.mediaDevices.getUserMedia({ audio: true });
+                    hasMicrophoneConsent = true;
+                    localStorage.setItem(STORAGE_KEYS.MICROPHONE_CONSENT, 'true');
+                } catch (err) {
+                    console.error('Microphone permission denied:', err);
+                    alert('Microphone permission is required for voice input.');
+                    return;
+                }
+            }
+
+            try {
+                recognition.start();
+                const input = document.getElementById('messageInput');
+                input.placeholder = 'Listening...';
+                document.getElementById('voiceInputToggle').setAttribute('data-listening', 'true');
+            } catch (err) {
+                console.error('Speech recognition error:', err);
+                isListening = false;
+                document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+            }
+        }
+
+        const STOP_WORDS = ['send', 'send message', 'send it'];
+
+        if (recognition) {
+            const placeholderText = 'Ask your question...';
+            
+            recognition.onresult = (event) => {
+                const input = document.getElementById('messageInput');
+                const transcript = event.results[0][0].transcript;
+                const lowerTranscript = transcript.toLowerCase();
+                
+                const endsWithStopWord = STOP_WORDS.some(stopWord => 
+                    lowerTranscript.endsWith(stopWord)
+                );
+                
+                if (endsWithStopWord) {
+                    const cleanTranscript = STOP_WORDS.reduce((text, stopWord) => {
+                        if (lowerTranscript.endsWith(stopWord)) {
+                            return transcript.slice(0, -stopWord.length).trim();
+                        }
+                        return text;
+                    }, transcript);
+                    
+                    input.value = cleanTranscript;
+                    input.placeholder = placeholderText;
+                    isListening = false;
+                    document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                    sendMessage();
+                } else {
+                    input.value = transcript;
+                    input.placeholder = placeholderText;
+                    isListening = false;
+                    document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                }
+            };
+
+            recognition.onend = () => {
+                const input = document.getElementById('messageInput');
+                input.placeholder = placeholderText;
+                isListening = false;
+                document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                const input = document.getElementById('messageInput');
+                input.placeholder = placeholderText;
+                isListening = false;
+                document.getElementById('voiceInputToggle').removeAttribute('data-listening');
+                
+                if (event.error === 'not-allowed' && !hasMicrophoneConsent) {
+                    localStorage.setItem(STORAGE_KEYS.MICROPHONE_CONSENT, 'false');
+                } else if (event.error === 'network') {
+                    alert('Unable to access speech recognition service. Please check your internet connection.');
+                } else if (event.error === 'no-speech') {
+                    input.placeholder = 'No speech detected. Try again...';
+                    setTimeout(() => {
+                        input.placeholder = placeholderText;
+                    }, 3000);
+                }
+            };
+
+            recognition.onstart = () => {
+                isListening = true;
+                document.getElementById('voiceInputToggle').setAttribute('data-listening', 'true');
+            };
         }
     </script>
 </body>
