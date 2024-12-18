@@ -1,5 +1,8 @@
 # Stoic Mentor
 
+<img src="https://github.com/user-attachments/assets/aba7081a-1c58-4dd6-a494-c76d41a6d76e" width=620 alt="Stoic Mentor demo" />
+
+
 ## Overview
 A local chatbot that takes on the persona of a stoic mentor.
 
